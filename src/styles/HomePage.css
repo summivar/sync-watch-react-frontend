@@ -1,0 +1,53 @@
+.container {
+    display: flex;
+    text-align: center;
+    flex-direction: column;
+    min-height: 92vh;
+    min-width: 100vw;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(10px + 2vmin);
+    background-color: rgba(147, 112, 216,90%);
+}
+
+
+.Greeting {
+    color: ghostwhite;
+    overflow: hidden;
+    width: 100%;
+    margin: 10px 0;
+    animation: typing 1s steps(25,end);
+}
+
+span {
+    color: ghostwhite;
+}
+
+.Link {
+    text-decoration: none;
+}
+
+.Link:hover {
+    text-decoration: none;
+}
+
+.Link:visited{
+    color: antiquewhite;
+    text-decoration: none;
+}
+
+@keyframes typing {
+    from {width: 0;}
+}
+
+@keyframes typing-2 {
+    0% {
+        width: 0;
+    }
+    50% {
+        width: 0;
+    }
+    100%{
+        width: 100%;
+    }
+}
