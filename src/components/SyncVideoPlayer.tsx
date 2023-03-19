@@ -61,7 +61,7 @@ const SyncVideoPlayer = () => {
     };
     const handlePlay = async () => {
         if(hubConnection){
-            if(isDataFromServer){
+            if(!isDataFromServer){
                 await store.postPlaying(true, hubConnection);
                 setIsDataFromServer(false);
                 return;
@@ -71,8 +71,13 @@ const SyncVideoPlayer = () => {
     };
     const handlePause = async () => {
         if(hubConnection){
-            await store.postPlaying(false, hubConnection);
-            await handleSeek();
+            if(!isDataFromServer){
+                await store.postPlaying(false, hubConnection);
+                await handleSeek();
+                setIsDataFromServer(false);
+                return;
+            }
+            setIsDataFromServer(false);
         }
     };
     const handleChangeVideo = async () => {
