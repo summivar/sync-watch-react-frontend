@@ -9,7 +9,7 @@ const SyncVideoPlayer = () => {
     const {store} = useContext(Context);
     const playerRef = useRef<ReactPlayer>(null);
     const [isPlaying, setIsPlaying] = useState<boolean>(false);
-    const [hubConnection, setHubConnection] = useState<HubConnection>();
+    const [hubConnection, setHubConnection] = useState<HubConnection | null>();
     const [urlValue, setUrlValue] = useState<string>('');
     const [currentUrl, setCurrentUrl] = useState<string>("https://www.youtube.com/watch?v=xXgV8SdgcZI");
 
@@ -26,6 +26,9 @@ const SyncVideoPlayer = () => {
                 })
                 .withAutomaticReconnect()
                 .build();
+            connection.onclose((e)=>{
+                setHubConnection(null);
+            });
             await connection.start();
             await connection.invoke("JoinRoom", {user, room});
             setHubConnection(connection);
