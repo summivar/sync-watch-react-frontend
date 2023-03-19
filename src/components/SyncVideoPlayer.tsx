@@ -12,7 +12,8 @@ const SyncVideoPlayer = () => {
     const [hubConnection, setHubConnection] = useState<HubConnection | null>();
     const [urlValue, setUrlValue] = useState<string>('');
     const [currentUrl, setCurrentUrl] = useState<string>("https://www.youtube.com/watch?v=xXgV8SdgcZI");
-    const [isDataFromServer, setIsDataFromServer] = useState<boolean>(false);
+    const [isPauseFromServer, setIsPauseFromServer] = useState<boolean>(false);
+    const [isSeekFromServer, setIsSeekFromServer] = useState<boolean>(false);
 
     useEffect(() => {
         createHubConnection(`${store.username}`,`${store.room}`).then(() => console.log(`TRY CONNECT WITH USER NAME => ${store.username} and room => ${store.room}`));
@@ -43,10 +44,11 @@ const SyncVideoPlayer = () => {
                 console.log(message);
             });
             hubConnection.on("PauseState", (response: boolean) => {
-                setIsDataFromServer(true);
+                setIsPauseFromServer(true);
                 setIsPlaying(response);
             });
             hubConnection.on("TimeState", (response: number) => {
+                setIsSeekFromServer(true);
                 playerRef.current?.seekTo(response);
             });
             hubConnection.on("NewVideo", (response: string) => {
@@ -56,28 +58,32 @@ const SyncVideoPlayer = () => {
     }, [hubConnection]);
     const handleSeek = async () => {
         if(hubConnection){
-            await store.postSync(Number(playerRef.current?.getCurrentTime()), hubConnection);
-        };
+            if(!isSeekFromServer){
+                await store.postSync(Number(playerRef.current?.getCurrentTime()), hubConnection);
+                setIsSeekFromServer(false);
+            }
+            setIsSeekFromServer(false);
+        }
     };
     const handlePlay = async () => {
         if(hubConnection){
-            if(!isDataFromServer){
+            if(!isPauseFromServer){
                 await store.postPlaying(true, hubConnection);
-                setIsDataFromServer(false);
+                setIsPauseFromServer(false);
                 return;
             }
-            setIsDataFromServer(false);
+            setIsPauseFromServer(false);
         };
     };
     const handlePause = async () => {
         if(hubConnection){
-            if(!isDataFromServer){
+            if(!isPauseFromServer){
                 await store.postPlaying(false, hubConnection);
                 await handleSeek();
-                setIsDataFromServer(false);
+                setIsPauseFromServer(false);
                 return;
             }
-            setIsDataFromServer(false);
+            setIsPauseFromServer(false);
         }
     };
     const handleChangeVideo = async () => {
