@@ -12,6 +12,7 @@ const SyncVideoPlayer = () => {
     const [hubConnection, setHubConnection] = useState<HubConnection | null>();
     const [urlValue, setUrlValue] = useState<string>('');
     const [currentUrl, setCurrentUrl] = useState<string>("https://www.youtube.com/watch?v=xXgV8SdgcZI");
+    const [isDataFromServer, setIsDataFromServer] = useState<boolean>(false);
 
     useEffect(() => {
         createHubConnection(`${store.username}`,`${store.room}`).then(() => console.log(`TRY CONNECT WITH USER NAME => ${store.username} and room => ${store.room}`));
@@ -42,6 +43,7 @@ const SyncVideoPlayer = () => {
                 console.log(message);
             });
             hubConnection.on("PauseState", (response: boolean) => {
+                setIsDataFromServer(true);
                 setIsPlaying(response);
             });
             hubConnection.on("TimeState", (response: number) => {
@@ -59,7 +61,12 @@ const SyncVideoPlayer = () => {
     };
     const handlePlay = async () => {
         if(hubConnection){
-            await store.postPlaying(true, hubConnection);
+            if(isDataFromServer){
+                await store.postPlaying(true, hubConnection);
+                setIsDataFromServer(false);
+                return;
+            }
+            setIsDataFromServer(false);
         };
     };
     const handlePause = async () => {
