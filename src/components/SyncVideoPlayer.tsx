@@ -12,11 +12,9 @@ const SyncVideoPlayer = () => {
     const [hubConnection, setHubConnection] = useState<HubConnection | null>();
     const [urlValue, setUrlValue] = useState<string>('');
     const [currentUrl, setCurrentUrl] = useState<string>("https://www.youtube.com/watch?v=xXgV8SdgcZI");
-    const [isPauseFromServer, setIsPauseFromServer] = useState<boolean>(false);
-    const [isSeekFromServer, setIsSeekFromServer] = useState<boolean>(false);
 
     useEffect(() => {
-        createHubConnection(`${store.username}`,`${store.room}`).then(() => console.log(`TRY CONNECT WITH USER NAME => ${store.username} and room => ${store.room}`));
+        createHubConnection(`${store.username}`, `${store.room}`).then(() => console.log(`TRY CONNECT WITH USER NAME => ${store.username} and room => ${store.room}`));
     }, []);
     const createHubConnection = async (user: string, room: string) => {
         try {
@@ -28,7 +26,7 @@ const SyncVideoPlayer = () => {
                 })
                 .withAutomaticReconnect()
                 .build();
-            connection.onclose((e)=>{
+            connection.onclose((e) => {
                 setHubConnection(null);
             });
             await connection.start();
@@ -44,11 +42,9 @@ const SyncVideoPlayer = () => {
                 console.log(message);
             });
             hubConnection.on("PauseState", (response: boolean) => {
-                setIsPauseFromServer(true);
                 setIsPlaying(response);
             });
             hubConnection.on("TimeState", (response: number) => {
-                setIsSeekFromServer(true);
                 playerRef.current?.seekTo(response);
             });
             hubConnection.on("NewVideo", (response: string) => {
@@ -57,37 +53,23 @@ const SyncVideoPlayer = () => {
         }
     }, [hubConnection]);
     const handleSeek = async () => {
-        if(hubConnection){
-            if(!isSeekFromServer){
-                await store.postSync(Number(playerRef.current?.getCurrentTime()), hubConnection);
-                setIsSeekFromServer(false);
-            }
-            setIsSeekFromServer(false);
+        if (hubConnection) {
+            await store.postSync(Number(playerRef.current?.getCurrentTime()), hubConnection);
         }
     };
     const handlePlay = async () => {
-        if(hubConnection){
-            if(!isPauseFromServer){
-                await store.postPlaying(true, hubConnection);
-                setIsPauseFromServer(false);
-                return;
-            }
-            setIsPauseFromServer(false);
-        };
+        if (hubConnection) {
+            await store.postPlaying(true, hubConnection);
+        }
     };
     const handlePause = async () => {
-        if(hubConnection){
-            if(!isPauseFromServer){
-                await store.postPlaying(false, hubConnection);
-                await handleSeek();
-                setIsPauseFromServer(false);
-                return;
-            }
-            setIsPauseFromServer(false);
+        if (hubConnection) {
+            await store.postPlaying(false, hubConnection);
+            await handleSeek();
         }
     };
     const handleChangeVideo = async () => {
-        if(hubConnection){
+        if (hubConnection) {
             await store.postChangeVideo(urlValue, hubConnection);
             setUrlValue('');
         }
@@ -100,7 +82,8 @@ const SyncVideoPlayer = () => {
             <button style={{margin: "2px"}} onClick={async () => {
                 store.setUrlHistory(urlValue);
                 await handleChangeVideo();
-            }}>Сменить видео</button>
+            }}>Сменить видео
+            </button>
             <ReactPlayer
                 url={currentUrl}
                 ref={playerRef}
