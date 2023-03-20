@@ -12,6 +12,7 @@ const SyncVideoPlayer = () => {
     const [hubConnection, setHubConnection] = useState<HubConnection | null>();
     const [urlValue, setUrlValue] = useState<string>('');
     const [currentUrl, setCurrentUrl] = useState<string>("https://www.youtube.com/watch?v=xXgV8SdgcZI");
+    const [isSeekFromServer, setIsSeekFromServer] = useState<boolean>(false);
 
     useEffect(() => {
         createHubConnection(`${store.username}`, `${store.room}`).then(() => console.log(`TRY CONNECT WITH USER NAME => ${store.username} and room => ${store.room}`));
@@ -46,6 +47,7 @@ const SyncVideoPlayer = () => {
             });
             hubConnection.on("TimeState", (response: number) => {
                 playerRef.current?.seekTo(response);
+                setIsSeekFromServer(true);
             });
             hubConnection.on("NewVideo", (response: string) => {
                 setCurrentUrl(response);
@@ -54,7 +56,12 @@ const SyncVideoPlayer = () => {
     }, [hubConnection]);
     const handleSeek = async () => {
         if (hubConnection) {
-            await store.postSync(Number(playerRef.current?.getCurrentTime()), hubConnection);
+            if (!isSeekFromServer) {
+                await store.postSync(Number(playerRef.current?.getCurrentTime()), hubConnection);
+                setIsSeekFromServer(false);
+                return;
+            }
+            setIsSeekFromServer(false);
         }
     };
     const handlePlay = async () => {
