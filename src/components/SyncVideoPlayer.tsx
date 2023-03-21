@@ -1,88 +1,101 @@
 import React, {useContext, useEffect, useRef, useState} from 'react';
 import ReactPlayer from "react-player";
-import {HubConnection, HubConnectionBuilder} from "@microsoft/signalr";
+import {HubConnectionBuilder} from "@microsoft/signalr";
 import {API_HUB} from "../http";
 import {Context} from "../index";
 import {observer} from "mobx-react-lite";
+import {Navigate} from "react-router-dom";
+import {IConnection} from "@microsoft/signalr/dist/esm/IConnection";
+
+interface IResponseState {
+    isPlaying: boolean;
+    time: number;
+}
 
 const SyncVideoPlayer = () => {
     const {store} = useContext(Context);
     const playerRef = useRef<ReactPlayer>(null);
-    const [isPlaying, setIsPlaying] = useState<boolean>(false);
-    const [hubConnection, setHubConnection] = useState<HubConnection | null>();
+    const [isActive, setIsActive] = useState<boolean>(false);
     const [urlValue, setUrlValue] = useState<string>('');
     const [currentUrl, setCurrentUrl] = useState<string>("https://www.youtube.com/watch?v=xXgV8SdgcZI");
-    const [isSeekFromServer, setIsSeekFromServer] = useState<boolean>(false);
+    const [stateFromServer, setStateFromServer] = useState<boolean>(false);
 
     useEffect(() => {
-        createHubConnection(`${store.username}`, `${store.room}`).then(() => console.log(`TRY CONNECT WITH USER NAME => ${store.username} and room => ${store.room}`));
-    }, []);
+        createHubConnection(`${store.username}`, `${store.room}`).then();
+    });
     const createHubConnection = async (user: string, room: string) => {
+        if (user === '' || room === '') {
+            console.log("Not valid room or user");
+            return;
+        }
         try {
             const connection = new HubConnectionBuilder()
-                .withUrl(API_HUB, {
-                    headers: {
-                        'Access-Control-Allow-Origin': '*'
-                    }
-                })
+                .withUrl(API_HUB)
                 .withAutomaticReconnect()
                 .build();
             connection.onclose((e) => {
-                setHubConnection(null);
+                store.setHubConnection(null);
             });
             await connection.start();
             await connection.invoke("JoinRoom", {user, room});
-            setHubConnection(connection);
+            store.setHubConnection(connection);
         } catch (e) {
             console.log(e);
         }
     };
+    const handleChangeState = (isPlaying: boolean, time: number) => {
+        setStateFromServer(true);
+        playerRef.current?.seekTo(time);
+        setIsActive(isPlaying);
+    }
     useEffect(() => {
-        if (hubConnection) {
-            hubConnection.on("ReceiveMessage", (message: string) => {
-                console.log(message);
+        if (store.hubConnection) {
+            store.hubConnection.on("ReceiveMessage", (message) => {
+                console.log("MESSAGE " + message);
             });
-            hubConnection.on("PauseState", (response: boolean) => {
-                setIsPlaying(response);
+            store.hubConnection.on("ChangeState", (response: IResponseState) => {
+                const {isPlaying, time} = response;
+                handleChangeState(isPlaying, time);
             });
-            hubConnection.on("TimeState", (response: number) => {
-                playerRef.current?.seekTo(response);
-                setIsSeekFromServer(true);
-            });
-            hubConnection.on("NewVideo", (response: string) => {
+            store.hubConnection.on("NewVideo", (response: string) => {
                 setCurrentUrl(response);
             });
         }
-    }, [hubConnection]);
-    const handleSeek = async () => {
-        if (hubConnection) {
-            if (!isSeekFromServer) {
-                await store.postSync(Number(playerRef.current?.getCurrentTime()), hubConnection);
-                setIsSeekFromServer(false);
-                return;
-            }
-            setIsSeekFromServer(false);
-        }
-    };
-    const handlePlay = async () => {
-        if (hubConnection) {
-            await store.postPlaying(true, hubConnection);
-        }
-    };
-    const handlePause = async () => {
-        if (hubConnection) {
-            await store.postPlaying(false, hubConnection);
-            await handleSeek();
-        }
-    };
+    }, [store.hubConnection]);
+    useEffect(() => {
+       const postState = async () => {
+           const time: number = Number(playerRef.current?.getCurrentTime());
+           await store.postState(isActive,time);
+       }
+       postState().catch(e => console.log(e));
+    }, [isActive])
     const handleChangeVideo = async () => {
-        if (hubConnection) {
-            await store.postChangeVideo(urlValue, hubConnection);
+        if (store.hubConnection) {
+            await store.postChangeVideo(urlValue);
             setUrlValue('');
         }
     };
     return (
         <>
+            <div>
+                <label className="textWhite">Выйти из комнаты</label>
+                <button
+                    style={{
+                        marginLeft: "5px",
+                        border: "none",
+                        backgroundColor: "red",
+                        color: "white",
+                        fontSize: "25px"
+                    }}
+                    onClick={() => {
+                        store.hubConnection?.stop();
+                        store.setHubConnection(null);
+                        return <Navigate to="/"/>
+                    }}
+                >
+                    Тык
+                </button>
+            </div>
             <input style={{margin: "2px"}} value={urlValue} onChange={(e) => {
                 setUrlValue(e.target.value);
             }}/>
@@ -92,13 +105,21 @@ const SyncVideoPlayer = () => {
             }}>Сменить видео
             </button>
             <ReactPlayer
+                width="350"
+                height="350"
                 url={currentUrl}
                 ref={playerRef}
                 controls={true}
-                playing={isPlaying}
-                onPlay={handlePlay}
-                onPause={handlePause}
-                onSeek={handleSeek}
+                playing={isActive}
+                onPlay={async () => {
+                    setIsActive(true)
+                }}
+                onPause={async () => {
+                    setIsActive(false)
+                }}
+                onSeek={async ()=>{
+                    console.log('hello');
+                }}
             />
         </>
     );

@@ -1,8 +1,11 @@
-import React, {FC, useState} from 'react';
+import React, {FC, useContext, useState} from 'react';
 import {Link} from "react-router-dom";
 import './Navbar.css';
 import {observer} from "mobx-react-lite";
-const Navbar : FC = () => {
+import {Context} from "../../index";
+
+const Navbar: FC = () => {
+    const {store} = useContext(Context);
     const [openMenu, setOpenMenu] = useState<boolean>(false);
     const handleClick = () => {
         setOpenMenu(!openMenu);
@@ -10,6 +13,10 @@ const Navbar : FC = () => {
     const closeMenu = () => {
         setOpenMenu(false);
     };
+    const disconnectFromServer = () => {
+        store.hubConnection?.stop();
+        store.setHubConnection(null);
+    }
     return (
         <div>
             <nav className="navbar">

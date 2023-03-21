@@ -5,8 +5,13 @@ export default class Store {
     urlHistory: Array<string> = [];
     username: string = "";
     room: string = "";
+    hubConnection: HubConnection | null = null;
 
-    setRoom(room: string){
+    setHubConnection(hubConnection: HubConnection | null){
+        this.hubConnection = hubConnection;
+    };
+
+    setRoom(room: string) {
         this.room = room;
     }
 
@@ -18,16 +23,12 @@ export default class Store {
         this.urlHistory.push(url);
     };
 
-    async postPlaying(b: boolean, hubConnection: HubConnection) {
-        await hubConnection.invoke("PlayingVideo", b);
+    async postState(isPlaying: boolean, time: number,) {
+        await this.hubConnection?.invoke("ChangeState", isPlaying, time);
     };
 
-    async postSync(sec: number, hubConnection: HubConnection) {
-        await hubConnection.invoke("RewindVideo", sec);
-    };
-
-    async postChangeVideo(url: string, hubConnection: HubConnection) {
-        await hubConnection.invoke("ChangeVideo", url);
+    async postChangeVideo(url: string) {
+        await this.hubConnection?.invoke("ChangeVideo", url);
     }
 
     constructor() {
