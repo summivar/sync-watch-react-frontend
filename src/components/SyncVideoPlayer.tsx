@@ -1,11 +1,10 @@
 import React, {useContext, useEffect, useRef, useState} from 'react';
-import ReactPlayer from "react-player";
+import ReactPlayer from "react-player/lazy";
 import {HubConnectionBuilder} from "@microsoft/signalr";
 import {API_HUB} from "../http";
 import {Context} from "../index";
 import {observer} from "mobx-react-lite";
 import {Navigate} from "react-router-dom";
-import {IConnection} from "@microsoft/signalr/dist/esm/IConnection";
 
 interface IResponseState {
     isPlaying: boolean;
@@ -18,11 +17,15 @@ const SyncVideoPlayer = () => {
     const [isActive, setIsActive] = useState<boolean>(false);
     const [urlValue, setUrlValue] = useState<string>('');
     const [currentUrl, setCurrentUrl] = useState<string>("https://www.youtube.com/watch?v=xXgV8SdgcZI");
-    const [stateFromServer, setStateFromServer] = useState<boolean>(false);
+    const [isStateFromServer, setIsStateFromServer] = useState<boolean>(false);
+    const [stateFromServer, setStateFromServer] = useState<IResponseState>({
+        'isPlaying':true,
+        'time':0
+    });
 
     useEffect(() => {
         createHubConnection(`${store.username}`, `${store.room}`).then();
-    });
+    }, []);
     const createHubConnection = async (user: string, room: string) => {
         if (user === '' || room === '') {
             console.log("Not valid room or user");
@@ -43,11 +46,22 @@ const SyncVideoPlayer = () => {
             console.log(e);
         }
     };
-    const handleChangeState = (isPlaying: boolean, time: number) => {
-        setStateFromServer(true);
-        playerRef.current?.seekTo(time);
-        setIsActive(isPlaying);
+    const handleChangeState = async () => {
+        console.log("DATA FROM SERVER: " + isStateFromServer);
+        if (isStateFromServer) {
+            console.log("YES, IN DATAFROMSERVER");
+            const {isPlaying, time} = stateFromServer;
+            playerRef.current?.seekTo(time);
+            setIsActive(isPlaying);
+        }
+        if (!isStateFromServer) {
+            console.log("NO, IN NO DATAFROMSERVER");
+            const time: number = Number(playerRef.current?.getCurrentTime());
+            await store.postState(isActive, time);
+        }
+        setIsStateFromServer(false);
     }
+
     useEffect(() => {
         if (store.hubConnection) {
             store.hubConnection.on("ReceiveMessage", (message) => {
@@ -55,7 +69,12 @@ const SyncVideoPlayer = () => {
             });
             store.hubConnection.on("ChangeState", (response: IResponseState) => {
                 const {isPlaying, time} = response;
-                handleChangeState(isPlaying, time);
+                setIsStateFromServer(true);
+                setStateFromServer({
+                    'isPlaying': isPlaying,
+                    'time': time
+                });
+                setIsActive(isPlaying);
             });
             store.hubConnection.on("NewVideo", (response: string) => {
                 setCurrentUrl(response);
@@ -63,11 +82,7 @@ const SyncVideoPlayer = () => {
         }
     }, [store.hubConnection]);
     useEffect(() => {
-       const postState = async () => {
-           const time: number = Number(playerRef.current?.getCurrentTime());
-           await store.postState(isActive,time);
-       }
-       postState().catch(e => console.log(e));
+        handleChangeState().catch(e => console.log(e));
     }, [isActive])
     const handleChangeVideo = async () => {
         if (store.hubConnection) {
@@ -107,19 +122,16 @@ const SyncVideoPlayer = () => {
             <ReactPlayer
                 width="350"
                 height="350"
+                playing={isActive}
+                onPlay={()=>{
+                    setIsActive(true);
+                }}
+                onPause={()=>{
+                    setIsActive(false);
+                }}
                 url={currentUrl}
                 ref={playerRef}
                 controls={true}
-                playing={isActive}
-                onPlay={async () => {
-                    setIsActive(true)
-                }}
-                onPause={async () => {
-                    setIsActive(false)
-                }}
-                onSeek={async ()=>{
-                    console.log('hello');
-                }}
             />
         </>
     );
