@@ -1,4 +1,4 @@
-# sync-watch-react-ts
+# sync-watch-react-ts-frontend
 
 **T**est functionality of using Websocket(React TS) with backend on C# with SignalR. Used to create synchronous video viewing from YouTube and other sites.
 
